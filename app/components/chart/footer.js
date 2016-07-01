@@ -29,10 +29,14 @@ var TidelineFooter = React.createClass({
     onClickBoxOverlay: React.PropTypes.func,
     onClickGroup: React.PropTypes.func,
     onClickLines: React.PropTypes.func,
+    onClickShowSmbg: React.PropTypes.func,
+    onClickShowCbg: React.PropTypes.func,
     onClickValues: React.PropTypes.func,
     boxOverlay: React.PropTypes.bool,
     grouped: React.PropTypes.bool,
     showingLines: React.PropTypes.bool,
+    showingSmbg: React.PropTypes.bool,
+    showingCbg: React.PropTypes.bool,
     showingValues: React.PropTypes.bool,
     onClickRefresh: React.PropTypes.func
   },
@@ -41,7 +45,6 @@ var TidelineFooter = React.createClass({
       'patient-data-subnav-hidden': this.props.chartType === 'no-data'
     });
 
-    
     var showValues = (
       <div className="footer-right-options">
         <label htmlFor="valuesCheckbox">
@@ -50,39 +53,45 @@ var TidelineFooter = React.createClass({
             onChange={this.props.onClickValues} /> Values
         </label>
       </div>
-      );
-    
+    );
 
-    
     var modalOpts = (
       <div className="footer-right-options">
-        <label htmlFor="overlayCheckbox">
-          <input type="checkbox" name="overlayCheckbox" id="overlayCheckbox"
+        <label htmlFor="smbgCheckbox">
+          <input type="checkbox" name="smbgCheckbox" id="smbgCheckbox"
+            checked={this.props.showingSmbg}
+            onChange={this.props.onClickShowSmbg} /> BGM
+        </label>
+
+        <label className={this.props.showingSmbg ? '' : 'disabled-label'} htmlFor="overlayCheckbox">
+          <input disabled={this.props.showingSmbg ? false : true} type="checkbox" name="overlayCheckbox" id="overlayCheckbox"
             checked={this.props.boxOverlay}
             onChange={this.props.onClickBoxOverlay} /> Range &amp; Average
         </label>
 
-        <label htmlFor="groupCheckbox">
-          <input type="checkbox" name="groupCheckbox" id="groupCheckbox"
+        <label className={this.props.showingSmbg ? '' : 'disabled-label'} htmlFor="groupCheckbox">
+          <input disabled={this.props.showingSmbg ? false : true} type="checkbox" name="groupCheckbox" id="groupCheckbox"
             checked={this.props.grouped}
             onChange={this.props.onClickGroup} /> Group
         </label>
 
-        <label htmlFor="linesCheckbox">
-          <input type="checkbox" name="linesCheckbox" id="linesCheckbox"
+        <label className={this.props.showingSmbg ? '' : 'disabled-label'} htmlFor="linesCheckbox">
+          <input disabled={this.props.showingSmbg ? false : true} type="checkbox" name="linesCheckbox" id="linesCheckbox"
             checked={this.props.showingLines}
             onChange={this.props.onClickLines} /> Lines
         </label>
-      </div>
-      );
-    
 
-    
+        <label htmlFor="cbgCheckbox">
+          <input type="checkbox" name="cbgCheckbox" id="cbgCheckbox"
+            checked={this.props.showingCbg}
+            onChange={this.props.onClickShowCbg} /> CGM
+        </label>
+      </div>
+    );
+
     var rightSide = this.props.chartType === 'weekly' ? showValues :
       this.props.chartType === 'modal' ? modalOpts : null;
-    
 
-    
     return (
       <div className="container-box-outer patient-data-footer-outer">
         <div className="container-box-inner patient-data-footer-inner">
@@ -94,8 +103,7 @@ var TidelineFooter = React.createClass({
           <div className="patient-data-footer-right">{rightSide}</div>
         </div>
       </div>
-      );
-    
+    );
   }
 });
 

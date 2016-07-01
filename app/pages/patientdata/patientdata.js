@@ -81,7 +81,9 @@ export let PatientData = React.createClass({
           extentSize: 14,
           boxOverlay: true,
           grouped: true,
-          showingLines: false
+          showingLines: false,
+          showingSmbg: true,
+          showingCbg: false
         }
       },
       chartType: 'basics',

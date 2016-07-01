@@ -33,7 +33,15 @@ var brush = tidelineBlip.modalday.brush;
 var modalDay = tidelineBlip.modalday.modalDay;
 
 var ModalChart = React.createClass({
-  chartOpts: ['bgClasses', 'bgUnits', 'boxOverlay', 'grouped', 'showingLines'],
+  chartOpts: [
+    'bgClasses',
+    'bgUnits',
+    'boxOverlay',
+    'grouped',
+    'showingLines',
+    'showingSmbg',
+    'showingCbg'
+  ],
   log: bows('Modal Chart'),
   propTypes: {
     activeDays: React.PropTypes.object.isRequired,
@@ -45,6 +53,8 @@ var ModalChart = React.createClass({
     boxOverlay: React.PropTypes.bool.isRequired,
     grouped: React.PropTypes.bool.isRequired,
     showingLines: React.PropTypes.bool.isRequired,
+    showingSmbg: React.PropTypes.bool.isRequired,
+    showingCbg: React.PropTypes.bool.isRequired,
     timePrefs: React.PropTypes.object.isRequired,
     // handlers
     onDatetimeLocationChange: React.PropTypes.func.isRequired,
@@ -279,13 +289,17 @@ var Modal = React.createClass({
         </div>
         <Footer
          chartType={this.isMissingSMBG() ? 'no-data' : this.chartType}
+         onClickShowSmbg={this.toggleSmbg}
          onClickBoxOverlay={this.toggleBoxOverlay}
          onClickGroup={this.toggleGroup}
          onClickLines={this.toggleLines}
+         onClickShowCbg={this.toggleCbg}
          onClickRefresh={this.props.onClickRefresh}
          boxOverlay={this.props.chartPrefs.modal.boxOverlay}
          grouped={this.props.chartPrefs.modal.grouped}
          showingLines={this.props.chartPrefs.modal.showingLines}
+         showingSmbg={this.props.chartPrefs.modal.showingSmbg}
+         showingCbg={this.props.chartPrefs.modal.showingCbg}
         ref="footer" />
       </div>
     );
@@ -334,6 +348,8 @@ var Modal = React.createClass({
         boxOverlay={this.props.chartPrefs.modal.boxOverlay}
         grouped={this.props.chartPrefs.modal.grouped}
         showingLines={this.props.chartPrefs.modal.showingLines}
+        showingSmbg={this.props.chartPrefs.modal.showingSmbg}
+        showingCbg={this.props.chartPrefs.modal.showingCbg}
         timePrefs={this.props.timePrefs}
         // handlers
         onDatetimeLocationChange={this.handleDatetimeLocationChange}
@@ -500,6 +516,11 @@ var Modal = React.createClass({
       self.props.updateChartPrefs(prefs);
     };
   },
+  toggleSmbg: function(e) {
+    var prefs = _.cloneDeep(this.props.chartPrefs);
+    prefs.modal.showingSmbg = prefs.modal.showingSmbg ? false : true;
+    this.props.updateChartPrefs(prefs);
+  },
   toggleBoxOverlay: function(e) {
     var prefs = _.cloneDeep(this.props.chartPrefs);
     prefs.modal.boxOverlay = prefs.modal.boxOverlay ? false : true;
@@ -513,6 +534,11 @@ var Modal = React.createClass({
   toggleLines: function(e) {
     var prefs = _.cloneDeep(this.props.chartPrefs);
     prefs.modal.showingLines = prefs.modal.showingLines ? false : true;
+    this.props.updateChartPrefs(prefs);
+  },
+  toggleCbg: function(e) {
+    var prefs = _.cloneDeep(this.props.chartPrefs);
+    prefs.modal.showingCbg = prefs.modal.showingCbg ? false : true;
     this.props.updateChartPrefs(prefs);
   },
   toggleWeekdays: function(allActive) {

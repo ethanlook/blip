@@ -21,6 +21,10 @@ label,
   display: block;
 }
 
+.disabled-label span {
+  cursor: not-allowed;
+}
+
 // Help text under form controls
 .form-help-block {
   margin-top: @spacing-tiny;
@@ -91,6 +95,9 @@ select.form-control {
 // Increased accessibility of checkboxes by emphasizing actionable items
 input[type="checkbox"] {
   cursor: pointer;
+}
+input[type="checkbox"]:disabled {
+  cursor: not-allowed;
 }
 
 // Form groups
