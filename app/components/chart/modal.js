@@ -61,22 +61,40 @@ var ModalChart = React.createClass({
     }
     var data = this.props.patientData;
     this.filterData = data.filterData;
-    this.dataByDate = data.smbgByDate.filterAll();
-    this.dataByDayOfWeek = data.smbgByDayOfWeek.filterAll();
-    this.allData = this.dataByDate.top(Infinity);
+
+    // smbg
+    this.smbgByDate = data.smbgByDate.filterAll();
+    this.smbgByDayOfWeek = data.smbgByDayOfWeek.filterAll();
+    this.allSmbg = this.smbgByDate.top(Infinity);
     var activeDays = this.props.activeDays;
-    this.dataByDayOfWeek.filterFunction(function(d) {
+    this.smbgByDayOfWeek.filterFunction(function(d) {
       return activeDays[d];
     });
-    var domain = d3.extent(this.allData, function(d) { return d.normalTime; });
-    // extend the domain to 28 days if existing data is less than that
-    if (Math.floor((Date.parse(domain[1]) - Date.parse(domain[0]))/864e5) < 28) {
-      domain[0] = d3.time.day.utc.offset(Date.parse(domain[1]), -28).toISOString();
+    var smbgDomain = d3.extent(this.allSmbg, function(d) { return d.normalTime; });
+    // extend the smbgDomain to 28 days if existing data is less than that
+    if (Math.floor((Date.parse(smbgDomain[1]) - Date.parse(smbgDomain[0]))/864e5) < 28) {
+      smbgDomain[0] = d3.time.day.utc.offset(Date.parse(smbgDomain[1]), -28).toISOString();
     }
-    this.dataByDate.filter(this.getInitialExtent(domain));
+    this.smbgByDate.filter(this.getInitialExtent(smbgDomain));
+
+    // cbg
+    // TODO: ripe for refactoring, since does same things as for smbg
+    this.cbgByDate = data.cbgByDate.filterAll();
+    this.cbgByDayOfWeek = data.cbgByDayOfWeek.filterAll();
+    this.allCbg = this.cbgByDate.top(Infinity);
+    this.cbgByDayOfWeek.filterFunction(function(d) {
+      return activeDays[d];
+    });
+    var cbgDomain = d3.extent(this.allCbg, function(d) { return d.normalTime; });
+    // extend the cbgDomain to 28 days if existing data is less than that
+    if (Math.floor((Date.parse(cbgDomain[1]) - Date.parse(cbgDomain[0]))/864e5) < 28) {
+      cbgDomain[0] = d3.time.day.utc.offset(Date.parse(cbgDomain[1]), -28).toISOString();
+    }
+    this.cbgByDate.filter(this.getInitialExtent(cbgDomain));
+
     this.setState({
-      bgDomain: d3.extent(this.allData, function(d) { return d.value; }),
-      dateDomain: domain
+      bgDomain: d3.extent(this.allSmbg.concat(this.allCbg), function(d) { return d.value; }),
+      dateDomain: d3.extent(smbgDomain.concat(cbgDomain))
     });
     console.timeEnd('Modal Pre-Mount');
   },
@@ -98,7 +116,13 @@ var ModalChart = React.createClass({
       timezone: timezone
     });
     console.time('Modal Draw');
-    this.chart.render(this.dataByDate.top(Infinity), _.pick(this.props, this.chartOpts));
+    this.chart.render(
+      {
+        smbg: this.smbgByDate.top(Infinity),
+        cbg: this.cbgByDate.top(Infinity)
+      },
+      _.pick(this.props, this.chartOpts)
+    );
     var domain = this.state.dateDomain;
     var extent = this.getInitialExtent(domain);
     this.brush = brush.create(document.getElementById('modalScroll'), domain, {
@@ -107,21 +131,21 @@ var ModalChart = React.createClass({
     });
     this.bindEvents();
     this.brush.emitter.emit('brushed', extent);
-    this.brush.render(this.allData);
+    this.brush.render();
     console.timeEnd('Modal Draw');
   },
   componentWillReceiveProps: function(nextProps) {
     // refilter by active days if necessary
     var activeDays = nextProps.activeDays;
     if (!_.isEqual(this.props.activeDays, activeDays)) {
-      this.dataByDayOfWeek.filterFunction(function(d) {
+      this.smbgByDayOfWeek.filterFunction(function(d) {
         return activeDays[d];
       });
     }
     // refilter by time if necessary
     if (this.props.extentSize !== nextProps.extentSize) {
       var current = this.getCurrentDay();
-      this.dataByDate.filter([
+      this.smbgByDate.filter([
         // not quite sure why I have to reduce the extent by one here...
         d3.time.day.utc.offset(new Date(current), -(nextProps.extentSize - 1)).toISOString(),
         current
@@ -129,8 +153,13 @@ var ModalChart = React.createClass({
     }
   },
   componentDidUpdate: function() {
-    var data = this.dataByDate.top(Infinity).reverse();
-    this.chart.render(data, _.pick(this.props, this.chartOpts));
+    this.chart.render(
+      {
+        smbg: this.smbgByDate.top(Infinity).reverse(),
+        cbg: this.cbgByDate.top(Infinity).reverse()
+      },
+      _.pick(this.props, this.chartOpts)
+    );
   },
   componentWillUnmount: function() {
     this.log('Unmounting...');
@@ -143,15 +172,13 @@ var ModalChart = React.createClass({
     this.chart.emitter.on('selectDay', this.props.onSelectDay);
   },
   render: function() {
-    
     return (
       <div id="tidelineContainer" className="patient-data-chart-modal"></div>
-      );
-    
+    );
   },
   clearAllFilters: function() {
-    this.dataByDate.filterAll();
-    this.dataByDayOfWeek.filterAll();
+    this.smbgByDate.filterAll();
+    this.smbgByDayOfWeek.filterAll();
   },
   getCurrentDay: function() {
     return this.brush.getCurrentDay().toISOString();
@@ -192,8 +219,14 @@ var ModalChart = React.createClass({
   },
   // handlers
   handleDatetimeLocationChange: function(datetimeLocationEndpoints) {
-    this.dataByDate.filter(datetimeLocationEndpoints);
-    this.chart.render(this.dataByDate.top(Infinity), _.pick(this.props, this.chartOpts));
+    this.smbgByDate.filter(datetimeLocationEndpoints);
+    this.chart.render(
+      {
+        smbg: this.smbgByDate.top(Infinity),
+        cbg: this.cbgByDate.top(Infinity)
+      },
+      _.pick(this.props, this.chartOpts)
+    );
     this.props.onDatetimeLocationChange(datetimeLocationEndpoints);
   }
 });
@@ -233,7 +266,6 @@ var Modal = React.createClass({
     }
   },
   render: function() {
-    
     return (
       <div id="tidelineMain">
         {this.isMissingSMBG() ? this.renderMissingSMBGHeader() : this.renderHeader()}
@@ -256,11 +288,9 @@ var Modal = React.createClass({
          showingLines={this.props.chartPrefs.modal.showingLines}
         ref="footer" />
       </div>
-      );
-    
+    );
   },
   renderHeader: function() {
-    
     return (
       <Header
         chartType={this.chartType}
@@ -273,10 +303,9 @@ var Modal = React.createClass({
         onClickTwoWeeks={this.handleClickWeekly}
         onClickSettings={this.handleClickSettings}
       ref="header" />
-      );
+    );
   },
   renderSubNav: function() {
-    
     return (
       <SubNav
        activeDays={this.props.chartPrefs.modal.activeDays}
@@ -291,11 +320,9 @@ var Modal = React.createClass({
        toggleWeekdays={this.toggleWeekdays}
        toggleWeekends={this.toggleWeekends}
        ref="subnav" />
-      );
-    
+    );
   },
   renderChart: function() {
-    
     return (
       <ModalChart
         activeDays={this.props.chartPrefs.modal.activeDays}
@@ -312,11 +339,9 @@ var Modal = React.createClass({
         onDatetimeLocationChange={this.handleDatetimeLocationChange}
         onSelectDay={this.handleSelectDay}
         ref="chart" />
-      );
-    
+    );
   },
   renderMissingSMBGHeader: function() {
-    
     return (
       <Header
         chartType={this.chartType}
@@ -328,14 +353,12 @@ var Modal = React.createClass({
         onClickTwoWeeks={this.handleClickWeekly}
       ref="header" />
     );
-    
   },
   renderMissingSMBGMessage: function() {
     var self = this;
     var handleClickUpload = function() {
       self.props.trackMetric('Clicked Partial Data Upload, No SMBG');
     };
-    
     return (
       <div className="patient-data-message patient-data-message-loading">
         <p>{'Blip\'s Trends view shows patterns in your finger stick BG data, but it looks like you haven\'t uploaded finger stick data yet.'}</p>
@@ -351,7 +374,6 @@ var Modal = React.createClass({
         </p>
       </div>
     );
-    
   },
   formatDate: function(datetime) {
     var timePrefs = this.props.timePrefs, timezone;
