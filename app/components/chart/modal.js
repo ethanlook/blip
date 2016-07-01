@@ -152,10 +152,20 @@ var ModalChart = React.createClass({
         return activeDays[d];
       });
     }
+    if (!_.isEqual(this.props.activeDays, activeDays)) {
+      this.cbgByDayOfWeek.filterFunction(function(d) {
+        return activeDays[d];
+      });
+    }
     // refilter by time if necessary
     if (this.props.extentSize !== nextProps.extentSize) {
       var current = this.getCurrentDay();
       this.smbgByDate.filter([
+        // not quite sure why I have to reduce the extent by one here...
+        d3.time.day.utc.offset(new Date(current), -(nextProps.extentSize - 1)).toISOString(),
+        current
+      ]);
+      this.cbgByDate.filter([
         // not quite sure why I have to reduce the extent by one here...
         d3.time.day.utc.offset(new Date(current), -(nextProps.extentSize - 1)).toISOString(),
         current
