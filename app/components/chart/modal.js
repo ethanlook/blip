@@ -240,6 +240,7 @@ var ModalChart = React.createClass({
   // handlers
   handleDatetimeLocationChange: function(datetimeLocationEndpoints) {
     this.smbgByDate.filter(datetimeLocationEndpoints);
+    this.cbgByDate.filter(datetimeLocationEndpoints);
     this.chart.render(
       {
         smbg: this.smbgByDate.top(Infinity),
