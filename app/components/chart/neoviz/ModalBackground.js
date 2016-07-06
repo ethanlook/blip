@@ -100,6 +100,6 @@ ModalBackground.propTypes = {
   svgDimensions: React.PropTypes.object.isRequired,
   xScale: React.PropTypes.func.isRequired,
   yScale: React.PropTypes.func.isRequired,
-}
+};
 
 export default ModalBackground;

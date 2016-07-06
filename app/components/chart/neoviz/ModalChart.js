@@ -43,7 +43,7 @@ const SMBG_OPTS = {
 
 const SVG_DIMS = {
   width: 960,
-  height: 689,
+  height: 520,
 };
 
 class ModalChart extends React.Component {
