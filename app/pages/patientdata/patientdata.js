@@ -78,12 +78,13 @@ export let PatientData = React.createClass({
             sunday: true,
           },
           activeDomain: '2 weeks',
+          cbgDayTraces: false,
           extentSize: 14,
-          boxOverlay: true,
-          grouped: true,
-          showingLines: false,
-          showingSmbg: true,
-          showingCbg: false
+          showingSmbg: false,
+          showingCbg: true,
+          smbgRangeOverlay: true,
+          smbgGrouped: true,
+          smbgLines: false,
         }
       },
       chartType: 'basics',

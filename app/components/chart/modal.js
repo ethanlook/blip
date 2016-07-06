@@ -32,225 +32,7 @@ var tidelineBlip = require('tideline/plugins/blip');
 var brush = tidelineBlip.modalday.brush;
 var modalDay = tidelineBlip.modalday.modalDay;
 
-var ModalChart = React.createClass({
-  chartOpts: [
-    'bgClasses',
-    'bgUnits',
-    'boxOverlay',
-    'grouped',
-    'showingLines',
-    'showingSmbg',
-    'showingCbg'
-  ],
-  log: bows('Modal Chart'),
-  propTypes: {
-    activeDays: React.PropTypes.object.isRequired,
-    bgClasses: React.PropTypes.object.isRequired,
-    bgUnits: React.PropTypes.string.isRequired,
-    extentSize: React.PropTypes.number.isRequired,
-    initialDatetimeLocation: React.PropTypes.string,
-    patientData: React.PropTypes.object.isRequired,
-    boxOverlay: React.PropTypes.bool.isRequired,
-    grouped: React.PropTypes.bool.isRequired,
-    showingLines: React.PropTypes.bool.isRequired,
-    showingSmbg: React.PropTypes.bool.isRequired,
-    showingCbg: React.PropTypes.bool.isRequired,
-    timePrefs: React.PropTypes.object.isRequired,
-    // handlers
-    onDatetimeLocationChange: React.PropTypes.func.isRequired,
-    onSelectDay: React.PropTypes.func.isRequired
-  },
-  componentWillMount: function() {
-    console.time('Modal Pre-Mount');
-    var timezone;
-    if (!this.props.timePrefs.timezoneAware) {
-      timezone = 'UTC';
-    }
-    else {
-      timezone = this.props.timePrefs.timezoneName || 'UTC';
-    }
-    var data = this.props.patientData;
-    this.filterData = data.filterData;
-
-    // smbg
-    this.smbgByDate = data.smbgByDate.filterAll();
-    this.smbgByDayOfWeek = data.smbgByDayOfWeek.filterAll();
-    this.allSmbg = this.smbgByDate.top(Infinity);
-    var activeDays = this.props.activeDays;
-    this.smbgByDayOfWeek.filterFunction(function(d) {
-      return activeDays[d];
-    });
-    var smbgDomain = d3.extent(this.allSmbg, function(d) { return d.normalTime; });
-    // extend the smbgDomain to 28 days if existing data is less than that
-    if (Math.floor((Date.parse(smbgDomain[1]) - Date.parse(smbgDomain[0]))/864e5) < 28) {
-      smbgDomain[0] = d3.time.day.utc.offset(Date.parse(smbgDomain[1]), -28).toISOString();
-    }
-    this.smbgByDate.filter(this.getInitialExtent(smbgDomain));
-
-    // cbg
-    // TODO: ripe for refactoring, since does same things as for smbg
-    this.cbgByDate = data.cbgByDate.filterAll();
-    this.cbgByDayOfWeek = data.cbgByDayOfWeek.filterAll();
-    this.allCbg = this.cbgByDate.top(Infinity);
-    this.cbgByDayOfWeek.filterFunction(function(d) {
-      return activeDays[d];
-    });
-    var cbgDomain = d3.extent(this.allCbg, function(d) { return d.normalTime; });
-    // extend the cbgDomain to 28 days if existing data is less than that
-    if (Math.floor((Date.parse(cbgDomain[1]) - Date.parse(cbgDomain[0]))/864e5) < 28) {
-      cbgDomain[0] = d3.time.day.utc.offset(Date.parse(cbgDomain[1]), -28).toISOString();
-    }
-    this.cbgByDate.filter(this.getInitialExtent(cbgDomain));
-
-    this.setState({
-      bgDomain: d3.extent(this.allSmbg.concat(this.allCbg), function(d) { return d.value; }),
-      dateDomain: d3.extent(smbgDomain.concat(cbgDomain))
-    });
-    console.timeEnd('Modal Pre-Mount');
-  },
-  mount: function() {
-    this.log('Mounting...');
-    var el = ReactDOM.findDOMNode(this);
-    var timezone;
-    if (!this.props.timePrefs.timezoneAware) {
-      timezone = 'UTC';
-    }
-    else {
-      timezone = this.props.timePrefs.timezoneName || 'UTC';
-    }
-    this.chart = modalDay.create(el, {
-      bgClasses: this.props.bgClasses,
-      bgDomain: this.state.bgDomain,
-      bgUnits: this.props.bgUnits,
-      clampTop: true,
-      timezone: timezone
-    });
-    console.time('Modal Draw');
-    this.chart.render(
-      {
-        smbg: this.smbgByDate.top(Infinity),
-        cbg: this.cbgByDate.top(Infinity)
-      },
-      _.pick(this.props, this.chartOpts)
-    );
-    var domain = this.state.dateDomain;
-    var extent = this.getInitialExtent(domain);
-    this.brush = brush.create(document.getElementById('modalScroll'), domain, {
-      initialExtent: extent,
-      timezone: timezone
-    });
-    this.bindEvents();
-    this.brush.emitter.emit('brushed', extent);
-    this.brush.render();
-    console.timeEnd('Modal Draw');
-  },
-  componentWillReceiveProps: function(nextProps) {
-    // refilter by active days if necessary
-    var activeDays = nextProps.activeDays;
-    if (!_.isEqual(this.props.activeDays, activeDays)) {
-      this.smbgByDayOfWeek.filterFunction(function(d) {
-        return activeDays[d];
-      });
-    }
-    if (!_.isEqual(this.props.activeDays, activeDays)) {
-      this.cbgByDayOfWeek.filterFunction(function(d) {
-        return activeDays[d];
-      });
-    }
-    // refilter by time if necessary
-    if (this.props.extentSize !== nextProps.extentSize) {
-      var current = this.getCurrentDay();
-      this.smbgByDate.filter([
-        // not quite sure why I have to reduce the extent by one here...
-        d3.time.day.utc.offset(new Date(current), -(nextProps.extentSize - 1)).toISOString(),
-        current
-      ]);
-      this.cbgByDate.filter([
-        // not quite sure why I have to reduce the extent by one here...
-        d3.time.day.utc.offset(new Date(current), -(nextProps.extentSize - 1)).toISOString(),
-        current
-      ]);
-    }
-  },
-  componentDidUpdate: function() {
-    this.chart.render(
-      {
-        smbg: this.smbgByDate.top(Infinity).reverse(),
-        cbg: this.cbgByDate.top(Infinity).reverse()
-      },
-      _.pick(this.props, this.chartOpts)
-    );
-  },
-  componentWillUnmount: function() {
-    this.log('Unmounting...');
-    this.clearAllFilters();
-    this.chart.destroy();
-    this.brush.destroy();
-  },
-  bindEvents: function() {
-    this.brush.emitter.on('brushed', this.handleDatetimeLocationChange);
-    this.chart.emitter.on('selectDay', this.props.onSelectDay);
-  },
-  render: function() {
-    return (
-      <div id="tidelineContainer" className="patient-data-chart-modal"></div>
-    );
-  },
-  clearAllFilters: function() {
-    this.smbgByDate.filterAll();
-    this.smbgByDayOfWeek.filterAll();
-  },
-  getCurrentDay: function() {
-    return this.brush.getCurrentDay().toISOString();
-  },
-  getInitialExtent: function(domain) {
-    var timePrefs = this.props.timePrefs, timezone;
-    if (!timePrefs.timezoneAware) {
-      timezone = 'UTC';
-    }
-    else {
-      timezone = timePrefs.timezoneName || 'UTC';
-    }
-
-    var extentSize = this.props.extentSize, extentBasis;
-    // only use passed in initialDatetimeLocation as extentBasis if it doesn't
-    // go past the domain of available smbg data
-    if (this.props.initialDatetimeLocation && this.props.initialDatetimeLocation < domain[1]) {
-      extentBasis = this.props.initialDatetimeLocation;
-    }
-    else {
-      extentBasis = domain[1];
-    }
-    // startOf('day') followed by add(1, 'days') is equivalent to d3's d3.time.day.ceil
-    // but we can't use that when dealing with arbitrary timezones :(
-    extentBasis = sundial.ceil(extentBasis, 'day', timezone);
-    var start = d3.time.day.utc.offset(extentBasis, -extentSize);
-    if (start.toISOString() < domain[0]) {
-      start = sundial.floor(domain[0], 'day', timezone);
-      extentBasis = d3.time.day.utc.offset(start, extentSize);
-    }
-    return [
-      start.toISOString(),
-      extentBasis.toISOString()
-    ];
-  },
-  setExtent: function(domain) {
-    this.brush.setExtent(domain);
-  },
-  // handlers
-  handleDatetimeLocationChange: function(datetimeLocationEndpoints) {
-    this.smbgByDate.filter(datetimeLocationEndpoints);
-    this.cbgByDate.filter(datetimeLocationEndpoints);
-    this.chart.render(
-      {
-        smbg: this.smbgByDate.top(Infinity),
-        cbg: this.cbgByDate.top(Infinity)
-      },
-      _.pick(this.props, this.chartOpts)
-    );
-    this.props.onDatetimeLocationChange(datetimeLocationEndpoints);
-  }
-});
+var ModalChart = require('./neoviz/ModalChart');
 
 var Modal = React.createClass({
   chartType: 'modal',
@@ -280,11 +62,6 @@ var Modal = React.createClass({
       title: '',
       visibleDays: 0
     };
-  },
-  componentDidMount: function() {
-    if (this.refs.chart) {
-      this.refs.chart.mount();
-    }
   },
   render: function() {
     return (
@@ -353,19 +130,23 @@ var Modal = React.createClass({
         activeDays={this.props.chartPrefs.modal.activeDays}
         bgClasses={this.props.bgPrefs.bgClasses}
         bgUnits={this.props.bgPrefs.bgUnits}
+        cbgDayTraces={this.props.chartPrefs.modal.cbgDayTraces}
         extentSize={this.props.chartPrefs.modal.extentSize}
         initialDatetimeLocation={this.props.initialDatetimeLocation}
-        patientData={this.props.patientData}
-        boxOverlay={this.props.chartPrefs.modal.boxOverlay}
-        grouped={this.props.chartPrefs.modal.grouped}
-        showingLines={this.props.chartPrefs.modal.showingLines}
         showingSmbg={this.props.chartPrefs.modal.showingSmbg}
         showingCbg={this.props.chartPrefs.modal.showingCbg}
+        smbgRangeOverlay={this.props.chartPrefs.modal.smbgRangeOverlay}
+        smbgGrouped={this.props.chartPrefs.modal.smbgGrouped}
+        smbgLines={this.props.chartPrefs.modal.smbgLines}
         timePrefs={this.props.timePrefs}
+        // data
+        cbgByDate={this.props.patientData.cbgByDate}
+        cbgByDayOfWeek={this.props.patientData.cbgByDayOfWeek}
+        smbgByDate={this.props.patientData.smbgByDate}
+        smbgByDayOfWeek={this.props.patientData.smbgByDayOfWeek}
         // handlers
         onDatetimeLocationChange={this.handleDatetimeLocationChange}
-        onSelectDay={this.handleSelectDay}
-        ref="chart" />
+        onSelectDay={this.handleSelectDay} />
     );
   },
   renderMissingSMBGHeader: function() {
