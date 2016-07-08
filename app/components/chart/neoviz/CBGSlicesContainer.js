@@ -18,6 +18,7 @@
 import _ from 'lodash';
 import React from 'react';
 import stats from 'simple-statistics';
+import { Motion, spring } from 'react-motion';
 
 import CBGSlices from './CBGSlices';
 
@@ -76,11 +77,29 @@ export default class CBGSlicesContainer extends React.Component {
     this.setState({ mungedData: this._mungeData(binSize, data)});
   }
 
+  _calcYPositions(mungedData, yScale) {
+    const transform = (d) => (spring(yScale(d)));
+    const yPositions = {};
+    _.each(mungedData, (d, i) => {
+      yPositions[`${i}-min`] = transform(d.min);
+      yPositions[`${i}-tenthQuantile`] = transform(d.tenthQuantile);
+      yPositions[`${i}-firstQuartile`] = transform(d.firstQuartile);
+      yPositions[`${i}-thirdQuartile`] = transform(d.thirdQuartile);
+      yPositions[`${i}-ninetiethQuantile`] = transform(d.ninetiethQuantile);
+      yPositions[`${i}-max`] = transform(d.max);
+    });
+    return yPositions;
+  }
+
   render() {
     const { xScale, yScale } = this.props;
     const { mungedData } = this.state;
     return (
-      <CBGSlices data={mungedData} xScale={xScale} yScale={yScale} />
+      <Motion style={this._calcYPositions(mungedData, yScale)}>
+        {(interpolatedStyle) => (
+          <CBGSlices data={mungedData} xScale={xScale} yPositions={interpolatedStyle} />
+        )}
+      </Motion>
     );
   }
 };

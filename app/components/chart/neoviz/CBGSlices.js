@@ -20,12 +20,7 @@ import React from 'react';
 import cx from 'classnames';
 
 const CBGSlices = (props) => {
-  const { data, xScale, yScale } = props;
-
-  const rangeSliceClasses = cx({
-    cbgSlice: true,
-    rangeSlice: true
-  });
+  const { data, xScale, yPositions } = props;
 
   return (
     <g id="cbgSlices">
@@ -36,8 +31,8 @@ const CBGSlices = (props) => {
               key={`rangeSlice-${i}`}
               x1={xScale(d.msX)}
               x2={xScale(d.msX)}
-              y1={yScale(d.min)}
-              y2={yScale(d.max)} />
+              y1={yPositions[`${i}-min`]}
+              y2={yPositions[`${i}-max`]} />
           );
         })}
       </g>
@@ -48,8 +43,8 @@ const CBGSlices = (props) => {
               key={`outerSlice-${i}`}
               x1={xScale(d.msX)}
               x2={xScale(d.msX)}
-              y1={yScale(d.tenthQuantile)}
-              y2={yScale(d.ninetiethQuantile)} />
+              y1={yPositions[`${i}-tenthQuantile`]}
+              y2={yPositions[`${i}-ninetiethQuantile`]} />
           );
         })}
       </g>
@@ -60,13 +55,19 @@ const CBGSlices = (props) => {
               key={`quartileSlice-${i}`}
               x1={xScale(d.msX)}
               x2={xScale(d.msX)}
-              y1={yScale(d.firstQuartile)}
-              y2={yScale(d.thirdQuartile)} />
+              y1={yPositions[`${i}-firstQuartile`]}
+              y2={yPositions[`${i}-thirdQuartile`]} />
           );
         })}
       </g>
     </g>
   );
+};
+
+CBGSlices.propTypes = {
+  data: React.PropTypes.array.isRequired,
+  xScale: React.PropTypes.func.isRequired,
+  yPositions: React.PropTypes.object.isRequired,
 };
 
 export default CBGSlices;
