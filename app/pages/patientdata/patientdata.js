@@ -78,7 +78,6 @@ export let PatientData = React.createClass({
             sunday: true,
           },
           activeDomain: '2 weeks',
-          cbgDayTraces: false,
           extentSize: 14,
           showingSmbg: false,
           showingCbg: true,

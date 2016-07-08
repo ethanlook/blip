@@ -43,6 +43,7 @@ const ModalBackground = (props) => {
           return (
             <rect
               className={cx({ [FILL_CLASSES[i]]: true, 'd3-rect-fill': true})}
+              key={`aboveTargetBkgrd-${i}`}
               x={(i === 0) ? margins.left : xScale(val)}
               y={margins.top}
               width={_.includes([0,7], i) ? baseWidth + smbgOpts.maxR : baseWidth}
@@ -59,6 +60,7 @@ const ModalBackground = (props) => {
           return (
             <rect
               className={cx({ [FILL_CLASSES[i]]: true, 'd3-rect-fill': true, 'd3-rect-fill-faded': true})}
+              key={`inTargetBkgrd-${i}`}
               x={(i === 0) ? margins.left : xScale(val)}
               y={yScale(bgClasses.target.boundary)}
               width={_.includes([0,7], i) ? baseWidth + smbgOpts.maxR : baseWidth}
@@ -75,6 +77,7 @@ const ModalBackground = (props) => {
           return (
             <rect
               className={cx({ [FILL_CLASSES[i]]: true, 'd3-rect-fill': true})}
+              key={`belowTargetBkgrd-${i}`}
               x={(i === 0) ? margins.left : xScale(val)}
               y={yScale(bgClasses.low.boundary)}
               width={_.includes([0,7], i) ? baseWidth + smbgOpts.maxR : baseWidth}
@@ -86,7 +89,7 @@ const ModalBackground = (props) => {
       </g>
     </g>
   );
-}
+};
 
 ModalBackground.defaultProps = {
   data: _.map([0,1,2,3,4,5,6,7], (i) => (i * THREE_HRS)),

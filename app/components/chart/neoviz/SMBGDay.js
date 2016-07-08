@@ -15,12 +15,4 @@
  * == BSD2 LICENSE ==
  */
 
-const SMBGDay = (props) => {
 
-};
-
-SMBGDay.propTypes = {
-
-};
-
-export default SMBGDay;
