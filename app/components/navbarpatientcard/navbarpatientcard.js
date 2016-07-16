@@ -40,6 +40,7 @@ var NavbarPatientCard = React.createClass({
     });
 
     var view = this.renderView(patient);
+    var print = this.renderPrint(patient)
     var upload = this.renderUpload(patient);
     var share = this.renderShare(patient);
     var profile = this.renderProfile(patient);
@@ -52,6 +53,7 @@ var NavbarPatientCard = React.createClass({
           {profile}
           <div className="patientcard-actions">
             {view}
+            {print}
             {share}
             {upload}
           </div>
@@ -76,6 +78,29 @@ var NavbarPatientCard = React.createClass({
     return (
       
       <Link className={classes} onClick={handleClick} to={this.props.href}>View</Link>
+      
+    );
+  },
+
+  renderPrint: function(patient) {
+    var printUrl = '';
+    if (!_.isEmpty(patient.link)) {
+      printUrl = patient.link.slice(0,-5) + '/print';
+    }
+
+    var classes = cx({
+      'patientcard-actions-print': true,
+      'patientcard-actions--highlight': this.props.currentPage && this.props.currentPage.match(/(print)$/i)
+    });
+
+    var self = this;
+    var handleClick = function(e) {
+      self.props.trackMetric('Clicked Navbar Print Data');
+    };
+
+    return (
+      
+      <Link className={classes} onClick={handleClick} to={printUrl} title="Print data">Print</Link>
       
     );
   },

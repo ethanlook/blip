@@ -51,6 +51,7 @@ var PatientCard = React.createClass({
     });
 
     var view = this.renderView(patient);
+    var print = this.renderPrint(patient);
     var remove = this.renderRemove(patient);
     var upload = this.renderUpload(patient);
     var share = this.renderShare(patient);
@@ -66,6 +67,7 @@ var PatientCard = React.createClass({
             <div className="patientcard-fullname" title={this.getFullName()}>{this.getFullName()} {profile}</div>
             <div className="patientcard-actions">
               {view}
+              {print}
               {share}
               {upload}
             </div>
@@ -96,6 +98,29 @@ var PatientCard = React.createClass({
     return (
       
       <Link className={classes} to={this.props.href} onClick={handleClick}>View</Link>
+      
+    );
+  },
+
+  renderPrint: function(patient) {
+    var printUrl = '';
+    if (!_.isEmpty(patient.link)) {
+      printUrl = patient.link.slice(0,-5) + '/print';
+    }
+
+    var classes = cx({
+      'patientcard-actions-print': true,
+      'patientcard-actions--highlight': (!this.props.isNavbar && this.state.highlight === 'print')  || this.props.currentPage && this.props.currentPage.match(/(print)$/i)
+    });
+
+    var self = this;
+    var handleClick = function(e) {
+      self.props.trackMetric('Clicked VDF Print Data');
+    };
+
+    return (
+      
+      <Link className={classes} onClick={handleClick} onMouseEnter={this.setHighlight('print')} onMouseLeave={this.setHighlight('print')} to={printUrl} title="Print data">Print</Link>
       
     );
   },

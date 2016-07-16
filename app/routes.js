@@ -11,6 +11,7 @@ import PatientProfile from './pages/patientprofile/patientprofile';
 import Share from './pages/share/share';
 import PatientNew from './pages/patientnew';
 import PatientData from './pages/patientdata';
+import PrintData from './pages/print';
 import RequestPasswordReset from './pages/passwordreset/request';
 import ConfirmPasswordReset from './pages/passwordreset/confirm';
 import EmailVerification from './pages/emailverification';
@@ -286,6 +287,7 @@ export const getRoutes = (appContext, store) => {
       <Route path='patients/:id/profile' component={PatientProfile} onEnter={requiresChrome(utils, requireAuth(api, store))} />
       <Route path='patients/:id/share' component={Share} onEnter={requiresChrome(utils, requireAuth(api, store))} />
       <Route path='patients/:id/data' component={PatientData} onEnter={requiresChrome(utils, requireAuth(api, store))} />
+      <Route path='patients/:id/print' component={PrintData} onEnter={requiresChrome(utils, requireAuth(api, store))} />
       <Route path='request-password-reset' component={RequestPasswordReset} onEnter={requireNoAuth(api)} />
       <Route path='confirm-password-reset' component={ConfirmPasswordReset} onEnter={ensureNoAuth(api)} />
       <Route path='request-password-from-uploader' component={RequestPasswordReset} onEnter={onUploaderPasswordReset(api)} />
