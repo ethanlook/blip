@@ -24,13 +24,9 @@ import bw_blippng from './img/bw-blip-logo.png';
 
 import personUtils from '../../core/personutils';
 import utils from '../../core/utils';
-import format from 'tideline/js/data/util/format';
 
 import DeviceSettings from './pages/settings';
-
-const MS_INHOUR = 3600000, MS_INDAY = 86400000;
-const MIN_DUR_FOR_RATE = 2 * MS_INHOUR;
-
+import WeekView from './pages/weekview';
 
 var PrintView = React.createClass({
   log: bows('Print View'),
@@ -94,30 +90,6 @@ var PrintView = React.createClass({
         </div>
       </div>
     );
-  },
-  
-  renderMissingSettingsMessage: function() {
-    var self = this;
-    var handleClickUpload = function() {
-      self.props.trackMetric('Clicked Partial Data Upload, No Settings');
-    };
-    
-    return (
-      <div className="patient-data-message patient-data-message-loading">
-        <p>{'Blip\'s Device Settings view shows your basal rates, carb ratios, sensitivity factors and more, but it looks like you haven\'t uploaded pump data yet.'}</p>
-        <p>{'To see your Device Settings in Blip,  '}
-          <a
-            href={this.props.uploadUrl}
-            target="_blank"
-            onClick={handleClickUpload}>upload</a>
-          {' your pump.'}</p>
-        <p>{'If you just uploaded, try '}
-          <a href="" onClick={this.props.onClickRefresh}>refreshing</a>
-          {'.'}
-        </p>
-      </div>
-    );
-    
   },
   
   isMissingSettings: function() {

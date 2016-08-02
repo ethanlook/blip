@@ -20,9 +20,6 @@ var bows = require('bows');
 var React = require('react');
 var ReactDOM = require('react-dom');
 
-import bw_tidepoolpng from '../img/bw-tidepool-logo.png';
-import bw_blippng from '../img/bw-blip-logo.png';
-
 import personUtils from '../../../core/personutils';
 import utils from '../../../core/utils';
 import format from 'tideline/js/data/util/format';
