@@ -42,7 +42,6 @@ var DeviceSettings = React.createClass({
     return (
       <div>{ this.renderDeviceSettings() }</div>
     );
-    
   },
 
   renderDeviceSettings: function() {
@@ -51,7 +50,7 @@ var DeviceSettings = React.createClass({
           { this.renderBasalRates() }
           { this.renderCalculatorSettings() }
         </div>
-  );
+    );
   },
 
   renderBasalRates: function() {

@@ -33,6 +33,7 @@ var PrintView = React.createClass({
   propTypes: {
     bgPrefs: React.PropTypes.object.isRequired,
     timePrefs: React.PropTypes.object.isRequired,
+    weekViewTimeRanges: React.PropTypes.array.isRequired,
     patient: React.PropTypes.object.isRequired,
     patientData: React.PropTypes.object.isRequired,
     onClickRefresh: React.PropTypes.func.isRequired,
@@ -47,6 +48,7 @@ var PrintView = React.createClass({
   },
 
   renderPrintView: function() {
+    var renderWeekView = this.renderWeekView;
     return (
       <div className="print-view-content">
         <div className="print-view-page print-view-page-title">
@@ -55,6 +57,13 @@ var PrintView = React.createClass({
         <div className="print-view-page print-view-page-device-settings">
           { this.isMissingSettings() ? null : this.renderDeviceSettings() }
         </div>
+        { this.props.weekViewTimeRanges.map(function(period) {
+          return (
+            <div className="print-view-page print-view-page-week-view">
+              { renderWeekView(period) }
+            </div>
+          );
+        }) }
       </div>
     );
   },
@@ -74,6 +83,22 @@ var PrintView = React.createClass({
           patientData={this.props.patientData}
           updateDatetimeLocation={this.updateDatetimeLocation}
           trackMetric={this.props.trackMetric} />
+      </div>
+    );
+  },
+
+  renderWeekView: function(period) {
+    return (
+      <div key={period[0].toUTCString()}>
+        { this.renderPageHeader(getDateRangeString(period)) }
+        <WeekView
+            bgPrefs={this.props.bgPrefs}
+            timePrefs={this.props.timePrefs}
+            timeRange={period}
+            patient={this.props.patient}
+            patientData={this.props.patientData}
+            updateDatetimeLocation={this.updateDatetimeLocation}
+            trackMetric={this.props.trackMetric} />
       </div>
     );
   },
@@ -105,6 +130,18 @@ var PrintView = React.createClass({
     }
     return false;
   }
+
 });
 
 module.exports = PrintView;
+
+var getDateRangeString = function(period) {
+  var monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  return monthNames[period[0].getMonth()] + ' ' + period[0].getDate()
+          + ', ' + period[0].getFullYear() + ' - '
+          + monthNames[period[1].getMonth()] + ' ' + period[1].getDate()
+          + ', ' + period[1].getFullYear();
+}

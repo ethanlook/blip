@@ -186,6 +186,17 @@ export let PrintData = React.createClass({
   renderPrintView: function() {
     var header = this.renderEmptyHeader();
 
+    // For now, just the last week of data.
+    // Eventually, user should pick their date ranges.
+    var end = new Date(2016, 5, 18, 23, 59, 59, 999);
+    // end.setHours(23,59,59,999);
+    var start = new Date(end);
+    start.setDate(start.getDate()-7);
+    start.setMilliseconds(start.getMilliseconds()+1);
+    var weekViewTimeRanges = [
+      [start, end]
+    ];
+
     return (
       <div className="printViewMain">
         <div className="print-data-user-facing">{header}</div>
@@ -201,6 +212,7 @@ export let PrintData = React.createClass({
                 <PrintView
                   bgPrefs={this.state.bgPrefs}
                   timePrefs={this.state.timePrefs}
+                  weekViewTimeRanges={weekViewTimeRanges}
                   patient={this.props.patient}
                   patientData={this.state.processedPatientData}
                   updateDatetimeLocation={this.updateDatetimeLocation}
