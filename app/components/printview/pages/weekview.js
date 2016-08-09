@@ -41,10 +41,7 @@ var WeekView = React.createClass({
 
   componentDidMount: function() {
     var el = ReactDOM.findDOMNode(this);
-    weekChart.create(el, {
-      width: '100%',
-      height: 340
-    }, this.getChartState());
+    weekChart.create(el, this.getChartState());
   },
 
   componentDidUpdate: function() {
@@ -56,8 +53,14 @@ var WeekView = React.createClass({
     var cbgData = this.sortByTime(
                     this.filterInTimeRange(
                       this.props.patientData.grouped.cbg));
+    var smbgData = this.sortByTime(
+                    this.filterInTimeRange(
+                      this.props.patientData.grouped.smbg));
     return {
       cbgData: cbgData,
+      smbgData: smbgData,
+      margin: {top: 40, right: 0, bottom: 0, left: 67},
+      width: 1300,
       height: 340,
       domain: {x: this.props.timeRange, y: [0, 400]}
     };
@@ -106,6 +109,7 @@ var formatDate = function(d) {
       applyOffsetToDate(d.time, d.timezoneOffset)
     );
 };
+var formatDateLabel = d3.time.format('%a %e');
 var formatHours = function(d) {
   var hours = d.getHours();
   if (hours === 0)
@@ -117,22 +121,25 @@ var formatHours = function(d) {
   return (hours - 12) + 'p';
 };
 
-weekChart.create = function(el, props, state) {
-  var margin = {top: 40, right: 0, bottom: 0, left: 40};
-  var width = 1300;
-  var height = props.height - (margin.top + margin.bottom);
+weekChart.create = function(el, state) {
 
   var svg = d3.select(el).append('svg')
       .attr('class', 'd3')
-      .attr('width', width)
-      .attr('height', props.height + 'px')
+      .attr('width', state.width)
+      .attr('height', state.height)
       .append('g')
         .attr('transform', 'translate(' 
-            + margin.left + ', ' 
-            + margin.top + ')');
+            + state.margin.left + ', ' 
+            + state.margin.top + ')');
 
   svg.append('g')
-      .attr('class', 'x axis');
+      .attr('class', 'y axis');
+
+  svg.append('g')
+      .attr('class', 'x axis major');
+
+  svg.append('g')
+      .attr('class', 'x axis minor');
 
   svg.append('g')
       .attr('class', 'cbg-points');
@@ -140,38 +147,144 @@ weekChart.create = function(el, props, state) {
   svg.append('path')
       .attr('class', 'cbg-line');
 
+  svg.append('g')
+      .attr('class', 'smbg-points');
+
   this.update(el, state);
 };
 
 weekChart.update = function(el, state) {
   // Re-compute the scales, and render the data points
-  var scales = this._scales(el, state.domain);
-  this._drawAxes(el, scales, state.height);
+  var scales = this._scales(el, state);
+  this._drawAxes(el, scales, state);
   // this._drawCbgPoints(el, scales, state.cbgData);
   this._drawCbgLine(el, scales, state.cbgData);
+  this._drawSmbgPoints(el, scales, state.smbgData);
 };
 
 weekChart.destroy = function(el) {
   // Any clean-up would go here
 };
 
-weekChart._drawAxes = function(el, scales, height) {
-  var gx = d3.select(el).selectAll('.axis').filter('.x');
+weekChart._drawAxes = function(el, scales, state) {
+  this._drawYAxis(el, scales, state.width);
+  this._drawXAxisMinor(el, scales, state.height);
+  this._drawXAxisMajor(el, scales, state.height);
+};
+
+weekChart._drawYAxis = function(el, scales, width) {
+  var gy = d3.select(el).selectAll('.axis')
+                        .filter('.y');
+
+  var yAxis = d3.svg.axis()
+              .scale(scales.y)
+              .orient('left')
+              .tickValues([50, 80, 180, 300])
+              .tickFormat(d3.format('d'))
+              .tickSize(-width)
+              .tickPadding(8);
+
+  gy.call(yAxis);
+
+  gy.selectAll('.tick')
+      .select('text')
+      .style('font-size', '15px')
+      .style('font-weight', '300');  
+
+  gy.selectAll('line')
+      .style('stroke-dasharray', '2,2');
+
+  gy.append('text')
+      .attr('dx', -67)
+      .attr('dy', 12)
+      .style('font-size', '13px')
+      .style('font-weight', '400')
+      .style('color', '#000000')
+      .text('BG & CGM');
+
+  gy.append('text')
+      .attr('dx', -42)
+      .attr('dy', 28)
+      .style('font-size', '13px')
+      .style('font-weight', '300')
+      .style('color', '#000000')
+      .text('mg/dL');      
+};
+
+weekChart._drawXAxisMajor = function(el, scales, height) {
+  var gxmajor = d3.select(el).selectAll('.axis')
+                        .filter('.x')
+                        .filter('.major');
+
+  var xAxisMajor = d3.svg.axis()
+                .scale(scales.x)
+                .orient('top')
+                .ticks(d3.time.days, 1)
+                .tickFormat(function(d, i) {
+                  if (i === 7) return '';
+                  return formatDateLabel(d);
+                })
+                .tickSize(0)
+                .tickPadding(28);
+
+  gxmajor.call(xAxisMajor);
+
+  gxmajor.selectAll('text')
+      .style('text-anchor', 'start')
+      .style('font-size', '13px')
+      .style('font-weight', '400');
+};
+
+weekChart._drawXAxisMinor = function(el, scales, height) {
+  const MAJOR_TICKS = 8;
+
+  var gxminor = d3.select(el).selectAll('.axis')
+                        .filter('.x')
+                        .filter('.minor');
   
-  var xAxis = d3.svg.axis()
+  var xAxisMinor = d3.svg.axis()
                 .scale(scales.x)
                 .orient('top')
                 .ticks(d3.time.hours, 3)
                 .tickFormat(function(d, i) {
+                  if (i === 7 * MAJOR_TICKS) return '';
                   if (i % 2 === 0)
                     return formatHours(d);
                 })
                 .tickSize(-height)
                 .tickPadding(8);
 
-  gx.call(xAxis)
-    .selectAll('text')
-      .style('text-anchor', 'start');
+  gxminor.call(xAxisMinor);
+
+  gxminor.selectAll('text')
+      .style('text-anchor', 'start')
+      .style('font-size', '15px')
+      .style('font-weight', '300');
+
+  gxminor.selectAll('line').filter(function(d, i) {
+      if (i % MAJOR_TICKS !== 0) return d;
+    })
+    .style('stroke-dasharray', '2,2');;
+};
+
+weekChart._drawSmbgPoints = function(el, scales, data) {
+  var g = d3.select(el).selectAll('.smbg-points');
+
+  var point = g.selectAll('.smbg-point')
+    .data(data, function(d) { return d.id; });
+
+  // ENTER
+  point.enter().append('circle')
+      .attr('class', 'smbg-point');
+
+  // ENTER & UPDATE
+  point.attr('cx', function(d) { return scales.x(formatDate(d)); })
+      .attr('cy', function(d) { return scales.y(d.value); })
+      .attr('r', function(d) { return 5; });
+
+  // EXIT
+  point.exit()
+      .remove();
 };
 
 weekChart._drawCbgPoints = function(el, scales, data) {
@@ -209,17 +322,21 @@ weekChart._drawCbgLine = function(el, scales, data) {
       .attr('fill', 'none');
 };
 
-weekChart._scales = function(el, domain) {
+weekChart._scales = function(el, state) {
+  var domain = state.domain;
   if (!domain) {
     return null;
   }
 
-  var width = el.offsetWidth;
-  var height = el.offsetHeight;
+  var width = state.width 
+    - (state.margin.left + state.margin.right);
+  var height = el.offsetHeight
+    - (state.margin.top + state.margin.bottom);
 
   var x = d3.time.scale()
     .range([0, width])
-    .domain(domain.x);
+    .domain(domain.x)
+    .nice();
 
   var y = d3.scale.linear()
     .range([height, 0])
