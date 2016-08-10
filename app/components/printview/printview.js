@@ -26,7 +26,7 @@ import personUtils from '../../core/personutils';
 import utils from '../../core/utils';
 
 import DeviceSettings from './pages/settings';
-import WeekView from './pages/weekview';
+import WeekView from './pages/weekview/weekview';
 
 var PrintView = React.createClass({
   log: bows('Print View'),

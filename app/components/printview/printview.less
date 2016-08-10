@@ -212,15 +212,21 @@
 //    Week View
 // ------------------------------
 
-.print-view-page-week-view {
-  padding-bottom: @largegap;
-}
-
-.print-view-week-view-content .axis path {
+.print-view-week-chart .axis path {
   display: none;
 }
 
-.print-view-week-view-content .axis line {
+.print-view-week-chart .axis line {
+  fill: none;
+  stroke: #000000;
+  stroke-width: 1px;
+}
+
+.print-view-week-stats .axis path {
+  display: none;
+}
+
+.print-view-week-stats .axis line {
   fill: none;
   stroke: #000000;
   stroke-width: 1px;

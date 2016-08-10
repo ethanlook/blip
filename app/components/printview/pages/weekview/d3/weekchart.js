@@ -14,119 +14,17 @@
  * not, you can obtain one from Tidepool Project at tidepool.org.
  * == BSD2 LICENSE ==
  */
-
-var _ = require('lodash');
-var bows = require('bows');
-var React = require('react');
-var ReactDOM = require('react-dom');
-
-import personUtils from '../../../core/personutils';
-import utils from '../../../core/utils';
-import format from 'tideline/js/data/util/format';
-
-const MS_INHOUR = 3600000, MS_INDAY = 86400000;
-const MIN_DUR_FOR_RATE = 2 * MS_INHOUR;
-
-var WeekView = React.createClass({
-  log: bows('Print View Week View'),
-  propTypes: {
-    bgPrefs: React.PropTypes.object.isRequired,
-    timePrefs: React.PropTypes.object.isRequired,
-    timeRange: React.PropTypes.array.isRequired,
-    patient: React.PropTypes.object.isRequired,
-    patientData: React.PropTypes.object.isRequired,
-    onClickRefresh: React.PropTypes.func.isRequired,
-    trackMetric: React.PropTypes.func.isRequired
-  },
-
-  componentDidMount: function() {
-    var el = ReactDOM.findDOMNode(this);
-    weekChart.create(el, this.getChartState());
-  },
-
-  componentDidUpdate: function() {
-    var el = ReactDOM.findDOMNode(this);
-    weekChart.update(el, this.getChartState());
-  },
-
-  getChartState: function() {
-    var cbgData = this.sortByTime(
-                    this.filterInTimeRange(
-                      this.props.patientData.grouped.cbg));
-    var smbgData = this.sortByTime(
-                    this.filterInTimeRange(
-                      this.props.patientData.grouped.smbg));
-    return {
-      cbgData: cbgData,
-      smbgData: smbgData,
-      margin: {top: 40, right: 0, bottom: 0, left: 67},
-      width: 1300,
-      height: 340,
-      domain: {x: this.props.timeRange, y: [0, 400]}
-    };
-  },
-
-  componentWillUnmount: function() {
-    var el = ReactDOM.findDOMNode(this);
-    weekChart.destroy(el);
-  },
-
-  render: function() {
-    return (
-      <div className='print-view-week-view-content'></div>
-    );
-  },
-
-  filterInTimeRange: function(data) {
-    var timeRange = this.props.timeRange;
-    return _.filter(data, function(d) {
-      var date = new Date(d.time).getTime(),
-          start = timeRange[0].getTime(),
-          end = timeRange[1].getTime();
-      return date >= start
-              && date < end;
-    });
-  },
-
-  sortByTime: function(data) {
-    return _.sortBy(data, function(d) {
-      return new Date(d.time);
-    });
-  }
-
-});
-
-module.exports = WeekView;
-
+var datetime = require('./util/datetime')
 var weekChart = {};
-var applyOffsetToDate = function(d, offset) {
-  var date = new Date(d);
-  date.setUTCMinutes(date.getUTCMinutes() + offset);
-  return new Date(date).toISOString();
-};
-var formatDate = function(d) {
-  return d3.time.format('%Y-%m-%dT%H:%M:%S.%LZ').parse(
-      applyOffsetToDate(d.time, d.timezoneOffset)
-    );
-};
-var formatDateLabel = d3.time.format('%a %e');
-var formatHours = function(d) {
-  var hours = d.getHours();
-  if (hours === 0)
-    return '12a';
-  if (hours < 12)
-    return hours + 'a';
-  if (hours === 12)
-    return '12p';
-  return (hours - 12) + 'p';
-};
 
 weekChart.create = function(el, state) {
+  var totalHeight = this._getTotalChartHeight(state)
+                    + state.margin.top + state.margin.bottom;
 
   var svg = d3.select(el).append('svg')
       .attr('class', 'd3')
       .attr('width', state.width)
-      .attr('height', state.height)
+      .attr('height', totalHeight)
       .append('g')
         .attr('transform', 'translate(' 
             + state.margin.left + ', ' 
@@ -155,7 +53,7 @@ weekChart.create = function(el, state) {
 
 weekChart.update = function(el, state) {
   // Re-compute the scales, and render the data points
-  var scales = this._scales(el, state);
+  var scales = this._bgScales(el, state);
   this._drawAxes(el, scales, state);
   // this._drawCbgPoints(el, scales, state.cbgData);
   this._drawCbgLine(el, scales, state.cbgData);
@@ -166,10 +64,14 @@ weekChart.destroy = function(el) {
   // Any clean-up would go here
 };
 
+weekChart._getTotalChartHeight = function(state) {
+  return state.bgHeight + state.bolusHeight + state.basalHeight;
+}
+
 weekChart._drawAxes = function(el, scales, state) {
   this._drawYAxis(el, scales, state.width);
-  this._drawXAxisMinor(el, scales, state.height);
-  this._drawXAxisMajor(el, scales, state.height);
+  this._drawXAxisMinor(el, scales, this._getTotalChartHeight(state));
+  this._drawXAxisMajor(el, scales);
 };
 
 weekChart._drawYAxis = function(el, scales, width) {
@@ -211,7 +113,7 @@ weekChart._drawYAxis = function(el, scales, width) {
       .text('mg/dL');      
 };
 
-weekChart._drawXAxisMajor = function(el, scales, height) {
+weekChart._drawXAxisMajor = function(el, scales) {
   var gxmajor = d3.select(el).selectAll('.axis')
                         .filter('.x')
                         .filter('.major');
@@ -222,7 +124,7 @@ weekChart._drawXAxisMajor = function(el, scales, height) {
                 .ticks(d3.time.days, 1)
                 .tickFormat(function(d, i) {
                   if (i === 7) return '';
-                  return formatDateLabel(d);
+                  return datetime.formatDateLabel(d);
                 })
                 .tickSize(0)
                 .tickPadding(28);
@@ -249,7 +151,7 @@ weekChart._drawXAxisMinor = function(el, scales, height) {
                 .tickFormat(function(d, i) {
                   if (i === 7 * MAJOR_TICKS) return '';
                   if (i % 2 === 0)
-                    return formatHours(d);
+                    return datetime.formatHours(d);
                 })
                 .tickSize(-height)
                 .tickPadding(8);
@@ -278,7 +180,7 @@ weekChart._drawSmbgPoints = function(el, scales, data) {
       .attr('class', 'smbg-point');
 
   // ENTER & UPDATE
-  point.attr('cx', function(d) { return scales.x(formatDate(d)); })
+  point.attr('cx', function(d) { return scales.x(datetime.formatDate(d)); })
       .attr('cy', function(d) { return scales.y(d.value); })
       .attr('r', function(d) { return 5; });
 
@@ -298,7 +200,7 @@ weekChart._drawCbgPoints = function(el, scales, data) {
       .attr('class', 'cbg-point');
 
   // ENTER & UPDATE
-  point.attr('cx', function(d) { return scales.x(formatDate(d)); })
+  point.attr('cx', function(d) { return scales.x(datetime.formatDate(d)); })
       .attr('cy', function(d) { return scales.y(d.value); })
       .attr('r', function(d) { return 1; });
 
@@ -312,7 +214,7 @@ weekChart._drawCbgLine = function(el, scales, data) {
 
   var line = d3.svg.line()
       .interpolate('basis')
-      .x(function(d) {return scales.x(formatDate(d));})
+      .x(function(d) {return scales.x(datetime.formatDate(d));})
       .y(function(d) {return scales.y(d.value);});
 
   path
@@ -322,7 +224,7 @@ weekChart._drawCbgLine = function(el, scales, data) {
       .attr('fill', 'none');
 };
 
-weekChart._scales = function(el, state) {
+weekChart._bgScales = function(el, state) {
   var domain = state.domain;
   if (!domain) {
     return null;
@@ -330,8 +232,7 @@ weekChart._scales = function(el, state) {
 
   var width = state.width 
     - (state.margin.left + state.margin.right);
-  var height = el.offsetHeight
-    - (state.margin.top + state.margin.bottom);
+  var height = state.bgHeight;
 
   var x = d3.time.scale()
     .range([0, width])
@@ -344,3 +245,5 @@ weekChart._scales = function(el, state) {
 
   return {x: x, y: y};
 };
+
+module.exports = weekChart;
