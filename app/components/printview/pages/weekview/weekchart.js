@@ -43,9 +43,9 @@ var WeekChart = React.createClass({
     return {
       cbgData: this.props.cbgData,
       smbgData: this.props.smbgData,
-      margin: {top: 40, right: 0, bottom: 0, left: 67},
-      width: 1300,
-      bgHeight: 250,
+      margin: {top: 40, right: 0, bottom: 0, left: 70},
+      width: '100%',
+      bgHeight: 200,
       bolusHeight: 75,
       basalHeight: 75,
       domain: {x: this.props.timeRange, y: [0, 400]}

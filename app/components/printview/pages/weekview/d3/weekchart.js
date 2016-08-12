@@ -68,8 +68,12 @@ weekChart._getTotalChartHeight = function(state) {
   return state.bgHeight + state.bolusHeight + state.basalHeight;
 }
 
+weekChart._getTotalChartWidth = function(el, state) {
+  return el.offsetWidth - (state.margin.left + state.margin.right);
+}
+
 weekChart._drawAxes = function(el, scales, state) {
-  this._drawYAxis(el, scales, state.width);
+  this._drawYAxis(el, scales, this._getTotalChartWidth(el, state));
   this._drawXAxisMinor(el, scales, this._getTotalChartHeight(state));
   this._drawXAxisMajor(el, scales);
 };
@@ -96,21 +100,23 @@ weekChart._drawYAxis = function(el, scales, width) {
   gy.selectAll('line')
       .style('stroke-dasharray', '2,2');
 
-  gy.append('text')
-      .attr('dx', -67)
-      .attr('dy', 12)
-      .style('font-size', '13px')
-      .style('font-weight', '400')
-      .style('color', '#000000')
-      .text('BG & CGM');
-
-  gy.append('text')
-      .attr('dx', -42)
-      .attr('dy', 28)
-      .style('font-size', '13px')
-      .style('font-weight', '300')
-      .style('color', '#000000')
-      .text('mg/dL');      
+  gy.selectAll('text').data(['BG & CGM', 'mg/dL'], function(d) {
+    return d;
+  })
+      .enter().append('text')
+        .attr('text-anchor', 'end')
+        .attr('dy', '.71em')
+        .attr('x', -4)
+        .attr('y', function(d, i) {
+          return 4 + 13 * i;
+        })
+        .style('font-size', '13px')
+        .style('font-weight', function(d, i) {
+          if (i === 0) return '400';
+          return '300';
+        })
+        .style('color', '#000000')
+        .text(function(d) { return d; });    
 };
 
 weekChart._drawXAxisMajor = function(el, scales) {
@@ -230,7 +236,7 @@ weekChart._bgScales = function(el, state) {
     return null;
   }
 
-  var width = state.width 
+  var width = el.offsetWidth 
     - (state.margin.left + state.margin.right);
   var height = state.bgHeight;
 

@@ -44,11 +44,11 @@ var WeekStats = React.createClass({
       cbgData: this.props.cbgData,
       smbgData: this.props.smbgData,
       margin: {top: 40, right: 0, bottom: 0, left: 67},
-      width: 1300,
-      cgmTimeHeight: 75,
-      aveBgHeight: 75,
-      totCarbsHeight: 75,
-      insulinHeight: 75,
+      width: '100%',
+      cgmTimeHeight: 41,
+      avgBgHeight: 110,
+      totCarbsHeight: 20,
+      insulinHeight: 20,
       domain: {x: this.props.timeRange, y: [0, 400]}
     };
   },
