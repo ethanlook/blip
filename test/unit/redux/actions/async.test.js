@@ -7,6 +7,8 @@
 
 import configureStore from 'redux-mock-store';
 import thunk from 'redux-thunk';
+import trackingMiddleware from '../../../../app/redux/utils/trackingMiddleware';
+
 import _ from 'lodash';
 
 import isTSA from 'tidepool-standard-action';
@@ -19,12 +21,17 @@ import * as ErrorMessages from '../../../../app/redux/constants/errorMessages';
 import * as UserMessages from '../../../../app/redux/constants/usrMessages';
 
 describe('Actions', () => {
-  const mockStore = configureStore([thunk]);
+  const trackMetric = sinon.spy();
+  const mockStore = configureStore([
+    thunk,
+    trackingMiddleware({ metrics: { track: trackMetric } })
+  ]);
 
   afterEach(function() {
     // very important to do this in an afterEach than in each test when __Rewire__ is used
     // if you try to reset within each test you'll make it impossible for tests to fail!
     async.__ResetDependency__('utils')
+    trackMetric.reset();
   })
 
   describe('Asynchronous Actions', () => {
@@ -51,6 +58,7 @@ describe('Actions', () => {
 
         const actions = store.getActions();
         expect(actions).to.eql(expectedActions);
+        expect(trackMetric.calledWith('Signed Up')).to.be.true;
       });
 
       it('[409] should trigger SIGNUP_FAILURE and it should call signup once and get zero times for a failed signup request', () => {
@@ -144,7 +152,7 @@ describe('Actions', () => {
 
         let expectedActions = [
           { type: 'CONFIRM_SIGNUP_REQUEST' },
-          { type: 'CONFIRM_SIGNUP_FAILURE', error: err, meta: { apiError: {status: 500, body: 'Error!'} } }
+          { type: 'CONFIRM_SIGNUP_FAILURE', error: err, payload: { signupKey: 'fakeSignupKey' }, meta: { apiError: {status: 500, body: 'Error!'} } }
         ];
         _.each(expectedActions, (action) => {
           expect(isTSA(action)).to.be.true;
@@ -157,6 +165,108 @@ describe('Actions', () => {
         expect(actions).to.eql(expectedActions);
         expect(api.user.confirmSignUp.calledWith('fakeSignupKey')).to.be.true;
         expect(api.user.confirmSignUp.callCount).to.equal(1);
+      });
+
+      it('[409] should trigger CONFIRM_SIGNUP_FAILURE and it should call confirmSignup once for a failed request and redirect for password creation', () => {
+        let user = { id: 27 };
+        let api = {
+          user: {
+            confirmSignUp: sinon.stub().callsArgWith(1, {status: 409, message: 'User does not have a password'})
+          }
+        };
+
+        let err = new Error(ErrorMessages.ERR_CONFIRMING_SIGNUP);
+        err.status = 409;
+
+        let expectedActions = [
+          { type: 'CONFIRM_SIGNUP_REQUEST' },
+          { type: 'CONFIRM_SIGNUP_FAILURE', error: err, payload: { signupKey: 'fakeSignupKey' }, meta: { apiError: {status: 409, message: 'User does not have a password'} } },
+          { type: '@@router/TRANSITION', payload: { args: [ '/verification-with-password?signupKey=fakeSignupKey&signupEmail=g@a.com' ], method: 'push' } }
+        ];
+        _.each(expectedActions, (action) => {
+          expect(isTSA(action)).to.be.true;
+        });
+
+        let store = mockStore(initialState);
+        store.dispatch(async.confirmSignup(api, 'fakeSignupKey', 'g@a.com'));
+
+        const actions = store.getActions();
+
+        expect(actions).to.eql(expectedActions);
+        expect(api.user.confirmSignUp.calledWith('fakeSignupKey')).to.be.true;
+        expect(api.user.confirmSignUp.callCount).to.equal(1);
+      });
+    });
+
+    describe('verifyCustodial', () => {
+      it('should trigger VERIFY_CUSTODIAL_SUCCESS and it should call verifyCustodial once for a successful request', () => {
+        let user = { id: 27 };
+        let key = 'fakeSignupKey';
+        let email = 'g@a.com';
+        let birthday = '07/18/1988';
+        let password = 'foobar01';
+        let creds = { username: email, password: password };
+        let api = {
+          user: {
+            custodialConfirmSignUp: sinon.stub().callsArgWith(3, null),
+            login: sinon.stub().callsArgWith(2, null),
+            get: sinon.stub().callsArgWith(0, null, user)
+          }
+        };
+
+        let expectedActions = [
+          { type: 'VERIFY_CUSTODIAL_REQUEST' },
+          { type: 'VERIFY_CUSTODIAL_SUCCESS' },
+          { type: 'LOGIN_REQUEST' },
+          { type: 'LOGIN_SUCCESS', payload: { user: user } },
+          { type: '@@router/TRANSITION', payload: { args: [ '/patients?justLoggedIn=true' ], method: 'push' } }
+        ];
+        _.each(expectedActions, (action) => {
+          expect(isTSA(action)).to.be.true;
+        });
+        let store = mockStore(initialState);
+        store.dispatch(async.verifyCustodial(api, key, email, birthday, password));
+
+        const actions = store.getActions();
+        expect(actions).to.eql(expectedActions);
+
+        expect(api.user.custodialConfirmSignUp.calledWith(key, birthday, password)).to.be.true;
+        expect(api.user.custodialConfirmSignUp.callCount).to.equal(1);
+
+        expect(trackMetric.calledWith('VCA Home Verification - Verified')).to.be.true;
+        expect(trackMetric.calledWith('Logged In')).to.be.true;
+      });
+
+      it('should trigger VERIFY_CUSTODIAL_FAILURE and it should call verifyCustodial once for a failed request', () => {
+        let user = { id: 27 };
+        let key = 'fakeSignupKey';
+        let email = 'g@a.com';
+        let birthday = '07/18/1988';
+        let password = 'foobar01';
+        let api = {
+          user: {
+            custodialConfirmSignUp: sinon.stub().callsArgWith(3, {status: 500, body: 'Error!'})
+          }
+        };
+
+        let err = new Error(ErrorMessages.ERR_CONFIRMING_SIGNUP);
+        err.status = 500;
+
+        let expectedActions = [
+          { type: 'VERIFY_CUSTODIAL_REQUEST' },
+          { type: 'VERIFY_CUSTODIAL_FAILURE', error: err, payload: { signupKey: 'fakeSignupKey' }, meta: { apiError: {status: 500, body: 'Error!'} } }
+        ];
+        _.each(expectedActions, (action) => {
+          expect(isTSA(action)).to.be.true;
+        });
+
+        let store = mockStore(initialState);
+        store.dispatch(async.verifyCustodial(api, key, email, birthday, password));
+
+        const actions = store.getActions();
+        expect(actions).to.eql(expectedActions);
+        expect(api.user.custodialConfirmSignUp.calledWith(key, birthday, password)).to.be.true;
+        expect(api.user.custodialConfirmSignUp.callCount).to.equal(1);
       });
     });
 
@@ -306,6 +416,7 @@ describe('Actions', () => {
         expect(actions).to.eql(expectedActions);
         expect(api.user.login.calledWith(creds)).to.be.true;
         expect(api.user.get.callCount).to.equal(1);
+        expect(trackMetric.calledWith('Logged In')).to.be.true;
       });
 
       it('should trigger LOGIN_SUCCESS and it should call login, user.get and patient.get once for a successful request', () => {
@@ -340,6 +451,7 @@ describe('Actions', () => {
         expect(api.user.login.calledWith(creds)).to.be.true;
         expect(api.user.get.callCount).to.equal(1);
         expect(api.patient.get.callCount).to.equal(1);
+        expect(trackMetric.calledWith('Logged In')).to.be.true;
       });
 
       it('[400] should trigger LOGIN_FAILURE and it should call login once and user.get zero times for a failed login request', () => {
@@ -520,6 +632,7 @@ describe('Actions', () => {
         const actions = store.getActions();
         expect(actions).to.eql(expectedActions);
         expect(api.user.logout.callCount).to.equal(1);
+        expect(trackMetric.calledWith('Logged Out')).to.be.true;
       });
     });
 
@@ -550,6 +663,7 @@ describe('Actions', () => {
         expect(actions).to.eql(expectedActions);
         expect(api.patient.post.calledWith(patient)).to.be.true;
         expect(api.patient.post.callCount).to.equal(1);
+        expect(trackMetric.calledWith('Created Profile')).to.be.true;
       });
 
       it('should trigger SETUP_DATA_STORAGE_FAILURE and it should call setupDataStorage once for a failed request', () => {
@@ -989,7 +1103,7 @@ describe('Actions', () => {
           { type: 'SET_MEMBER_PERMISSIONS_SUCCESS', payload: {
               memberId: memberId,
               permissions: permissions
-            } 
+            }
           },
           { type: 'FETCH_PATIENT_REQUEST' },
           { type: 'FETCH_PATIENT_SUCCESS', payload: { patient: patient } },
@@ -1060,6 +1174,7 @@ describe('Actions', () => {
         const actions = store.getActions();
         expect(actions).to.eql(expectedActions);
         expect(api.patient.put.calledWith(patient)).to.be.true;
+        expect(trackMetric.calledWith('Updated Profile')).to.be.true;
       });
 
       it('should trigger UPDATE_PATIENT_FAILURE and it should call updatePatient once for a failed request', () => {
@@ -1093,11 +1208,11 @@ describe('Actions', () => {
     describe('updateUser', () => {
       it('should trigger UPDATE_USER_SUCCESS and it should call updateUser once for a successful request', () => {
         let loggedInUserId = 400;
-        let currentUser = { 
-          profile: { 
-            name: 'Joe Bloggs', 
+        let currentUser = {
+          profile: {
+            name: 'Joe Bloggs',
             age: 29
-          }, 
+          },
           password: 'foo',
           emails: [
             'joe@bloggs.com'
@@ -1105,18 +1220,18 @@ describe('Actions', () => {
           username: 'Joe'
         };
 
-        let formValues = { 
-          profile: { 
-            name: 'Joe Steven Bloggs', 
+        let formValues = {
+          profile: {
+            name: 'Joe Steven Bloggs',
             age: 30
-          }, 
+          },
         };
 
         let updatingUser = {
-          profile: { 
-            name: 'Joe Steven Bloggs', 
+          profile: {
+            name: 'Joe Steven Bloggs',
             age: 30
-          }, 
+          },
           emails: [
             'joe@bloggs.com'
           ],
@@ -1124,18 +1239,18 @@ describe('Actions', () => {
         };
 
         let userUpdates = {
-          profile: { 
-            name: 'Joe Steven Bloggs', 
+          profile: {
+            name: 'Joe Steven Bloggs',
             age: 30
           },
           password: 'foo'
         };
 
         let updatedUser = {
-          profile: { 
-            name: 'Joe Steven Bloggs', 
+          profile: {
+            name: 'Joe Steven Bloggs',
             age: 30
-          }, 
+          },
           emails: [
             'joe@bloggs.com'
           ],
@@ -1165,15 +1280,16 @@ describe('Actions', () => {
         const actions = store.getActions();
         expect(actions).to.eql(expectedActions);
         expect(api.user.put.calledWith(userUpdates)).to.be.true;
+        expect(trackMetric.calledWith('Updated Account')).to.be.true;
       });
 
       it('should trigger UPDATE_USER_FAILURE and it should call updateUser once for a failed request', () => {
         let loggedInUserId = 400;
-        let currentUser = { 
-          profile: { 
-            name: 'Joe Bloggs', 
+        let currentUser = {
+          profile: {
+            name: 'Joe Bloggs',
             age: 29
-          }, 
+          },
           password: 'foo',
           emails: [
             'joe@bloggs.com'
@@ -1181,18 +1297,18 @@ describe('Actions', () => {
           username: 'Joe'
         };
 
-        let formValues = { 
-          profile: { 
-            name: 'Joe Steven Bloggs', 
+        let formValues = {
+          profile: {
+            name: 'Joe Steven Bloggs',
             age: 30
           }
         };
 
         let updatingUser = {
-          profile: { 
-            name: 'Joe Steven Bloggs', 
+          profile: {
+            name: 'Joe Steven Bloggs',
             age: 30
-          }, 
+          },
           emails: [
             'joe@bloggs.com'
           ],
@@ -1200,8 +1316,8 @@ describe('Actions', () => {
         };
 
         let userUpdates = {
-          profile: { 
-            name: 'Joe Steven Bloggs', 
+          profile: {
+            name: 'Joe Steven Bloggs',
             age: 30
           },
           password: 'foo'
@@ -1340,7 +1456,7 @@ describe('Actions', () => {
       it('should trigger LOG_ERROR_SUCCESS and it should call error once for a successful request', () => {
         let error = 'Error';
         let message = 'Some random detailed error message!';
-        let props = { 
+        let props = {
           stacktrace: true
         };
 
@@ -1865,7 +1981,7 @@ describe('Actions', () => {
 
         let store = mockStore(initialState);
         store.dispatch(async.fetchPatientData(api, patientId));
-        
+
         const actions = store.getActions();
         expect(actions).to.eql(expectedActions);
         expect(api.patientData.get.withArgs(patientId).callCount).to.equal(1);
