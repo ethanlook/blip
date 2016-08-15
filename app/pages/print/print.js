@@ -220,7 +220,6 @@ export let PrintData = React.createClass({
 
   getMostRecentDataEndpoints: function() {   
     var data = this.state.processedPatientData.data;
-    console.log(data);
 
     var lastObj = _.sortBy(data, function(d) {
       return d.normalEnd ? d.normalEnd : d.normalTime;

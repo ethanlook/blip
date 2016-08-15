@@ -59,7 +59,7 @@ var PrintView = React.createClass({
         </div>
         { this.props.weekViewTimeRanges.map(function(period) {
           return (
-            <div className="print-view-page print-view-page-week-view">
+            <div key={period[0].toUTCString()} className="print-view-page print-view-page-week-view">
               { renderWeekView(period) }
             </div>
           );
