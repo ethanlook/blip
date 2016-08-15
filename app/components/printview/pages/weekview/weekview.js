@@ -30,7 +30,6 @@ var WeekView = React.createClass({
     timeRange: React.PropTypes.array.isRequired,
     patient: React.PropTypes.object.isRequired,
     patientData: React.PropTypes.object.isRequired,
-    onClickRefresh: React.PropTypes.func.isRequired,
     trackMetric: React.PropTypes.func.isRequired
   },
 
