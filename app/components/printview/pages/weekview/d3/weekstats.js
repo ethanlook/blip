@@ -137,13 +137,14 @@ weekStats._drawCgmTimes = function(el, state, horizSpacing, height) {
 
     var barSizes = [];
     for (var j = 0; j < rangeCounts.length; j++) {
-      barSizes.push({
-        x: x,
-        y: j * barHeight + j,
-        width: rangeCounts[j] * barWidthRatio,
-        height: barHeight,
-        fill: '#000000'
-      });
+      if (isFinite(barWidthRatio))
+        barSizes.push({
+          x: x,
+          y: j * barHeight + j,
+          width: rangeCounts[j] * barWidthRatio,
+          height: barHeight,
+          fill: '#000000'
+        });
     }
     cgmTimesSizes.push(barSizes);
   }
@@ -191,15 +192,23 @@ weekStats._drawAvgBg = function(el, state, horizSpacing, height) {
 
     var dayCbgData = this._getCbgDataForDayStart(cbgData, dayStart);
     var avgCbgValue = this._getAverageBg(dayCbgData);
-    avgBgsValues.push({
-      text: Math.round(avgCbgValue) + ' mg/dL',
-      textX: (i + 0.5) * horizSpacing,
-      lineX1: i * horizSpacing + 2,
-      lineX2: (i + 1) * horizSpacing - 2,
-      lineY: height - avgCbgValue / 400 * height,
-      circleX: (i + 0.5) * horizSpacing,
-      circleY: height - avgCbgValue / 400 * height
-    });
+    if (!isNaN(avgCbgValue))
+      avgBgsValues.push({
+        valid: true,
+        text: Math.round(avgCbgValue) + ' mg/dL',
+        textX: (i + 0.5) * horizSpacing,
+        lineX1: i * horizSpacing + 2,
+        lineX2: (i + 1) * horizSpacing - 2,
+        lineY: height - avgCbgValue / 400 * height,
+        circleX: (i + 0.5) * horizSpacing,
+        circleY: height - avgCbgValue / 400 * height
+      });
+    else
+      avgBgsValues.push({
+        valid: false,
+        text: 'No CBG Data',
+        textX: (i + 0.5) * horizSpacing
+      });      
   }
 
   var avgBg = avgBgs.selectAll('.avg-bg').data(avgBgsValues)
@@ -216,7 +225,8 @@ weekStats._drawAvgBg = function(el, state, horizSpacing, height) {
             })
       .text(function(d) {return d.text;});
 
-  var avgBgArt = avgBg.append('g').attr('class', 'avg-bg-art');
+  var avgBgArt = avgBg.append('g').attr('class', 'avg-bg-art')
+                  .filter(function(d) { return d.valid });
 
   avgBgArt.append('line')
             .attr({
