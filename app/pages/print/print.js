@@ -186,15 +186,8 @@ export let PrintData = React.createClass({
   renderPrintView: function() {
     var header = this.renderEmptyHeader();
 
-    // For now, just the last week of data.
-    // Eventually, user should pick their date ranges.
-    var end = new Date(2016, 5, 18, 23, 59, 59, 999);
-    // end.setHours(23,59,59,999);
-    var start = new Date(end);
-    start.setDate(start.getDate()-7);
-    start.setMilliseconds(start.getMilliseconds()+1);
     var weekViewTimeRanges = [
-      [start, end]
+      this.getMostRecentDataEndpoints()
     ];
 
     return (
@@ -223,6 +216,23 @@ export let PrintData = React.createClass({
         </div>
       </div>
     );
+  },
+
+  getMostRecentDataEndpoints: function() {   
+    var data = this.state.processedPatientData.data;
+    console.log(data);
+
+    var lastObj = _.sortBy(data, function(d) {
+      return d.normalEnd ? d.normalEnd : d.normalTime;
+    }).reverse()[0];
+    var end = lastObj.normalEnd ? new Date(lastObj.normalEnd) : new Date(lastObj.normalTime);
+    end.setHours(23,59,59,999);
+
+    var start = new Date(end);
+    start.setDate(start.getDate() - 7);
+    start.setMilliseconds(start.getMilliseconds() + 1);
+
+    return [start, end];
   },
 
   handleClickRefresh: function(e) {
