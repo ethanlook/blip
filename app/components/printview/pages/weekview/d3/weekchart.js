@@ -236,7 +236,7 @@ weekChart._bgScales = function(el, state) {
     return null;
   }
 
-  var width = el.offsetWidth 
+  var width = el.offsetWidth
     - (state.margin.left + state.margin.right);
   var height = state.bgHeight;
 
